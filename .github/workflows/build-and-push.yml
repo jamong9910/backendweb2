@@ -1,0 +1,48 @@
+name: Build & Push to ACR
+
+on:
+  push:
+    branches: [ "main" ]   # 원하는 브랜치로 변경
+
+env:
+  ACR_LOGIN_SERVER: jamong1014.azurecr.io
+  IMAGE_NAME: backendweb   # ACR 리포지토리 이름
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # (옵션1) Service Principal 사용시: Azure 로그인
+      - name: Azure login
+        if: ${{ secrets.AZURE_CREDENTIALS != '' }}
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # ACR 로그인 (Admin 계정 or Service Principal 중 하나 사용)
+      - name: ACR docker login (admin creds)
+        if: ${{ secrets.ACR_USERNAME != '' }}
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      # (옵션2) SP 토큰으로 docker 로그인 (위 admin creds 대신 사용 가능)
+      # - name: ACR docker login (az acr login)
+      #   run: az acr login --name jamong1014
+
+      - name: Build image
+        run: |
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}
+          docker build -t $IMAGE:latest -t $IMAGE:${{ github.sha }} .
+
+      - name: Push image
+        run: |
+          IMAGE=${{ env.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}
+          docker push $IMAGE:latest
+          docker push $IMAGE:${{ github.sha }}
