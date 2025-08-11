@@ -3,32 +3,27 @@ on:
   push:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     env:
+      ACR_NAME: jamong1014
       ACR_LOGIN_SERVER: jamong1014.azurecr.io
       IMAGE_NAME: backendweb
-      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
-      ACR_USERNAME: ${{ secrets.ACR_USERNAME }}
-      ACR_PASSWORD: ${{ secrets.ACR_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Azure login
-        if: ${{ env.AZURE_CREDENTIALS != '' }}
+      - name: Azure login (SP JSON)
         uses: azure/login@v1
         with:
-          creds: ${{ env.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}  # {clientId, clientSecret, subscriptionId, tenantId}
 
-      - name: ACR docker login (admin creds)
-        if: ${{ env.ACR_USERNAME != '' && env.ACR_PASSWORD != '' }}
-        uses: azure/docker-login@v1
-        with:
-          login-server: ${{ env.ACR_LOGIN_SERVER }}
-          username: ${{ env.ACR_USERNAME }}
-          password: ${{ env.ACR_PASSWORD }}
+      - name: ACR login via az
+        run: az acr login --name ${{ env.ACR_NAME }}
 
       - name: Build image
         run: |
